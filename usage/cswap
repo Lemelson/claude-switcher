@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Account provider for CodexBar in the claude-swap format (schema v1).
+
+CodexBar itself calls:  cswap --list --json | --version | --switch-to N --json
+We answer from the ready state.json summary (tick.py keeps it up to date) and do not touch
+the network or the Keychain here, so the answer is instant.
+
+Switching from CodexBar is disabled on purpose: changing the account restarts Claude
+and breaks running sessions, so it is done only from the Claude Switcher menu.
+"""
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+
+STATE = os.path.expanduser("~/Library/Application Support/ClaudeSwitcher/usage/state.json")
+VERSION = "1.0.0"
+STALE = 25 * 60  # a sample older than this counts as "last known"
+
+
+def iso(ts):
+    return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def win(w, now):
+    if not w or w.get("pct") is None:
+        return None
+    ra = w.get("resetsAt")
+    if ra and ra <= now:
+        return {"pct": 0}
+    return {"pct": w["pct"], **({"resetsAt": iso(ra)} if ra else {})}
+
+
+def usage_of(a, now):
+    ws = a.get("windows") or {}
+    u = {}
+    if win(ws.get("5h"), now) and ws["5h"].get("source") == "poll":
+        u["fiveHour"] = win(ws["5h"], now)
+    if win(ws.get("7d"), now):
+        u["sevenDay"] = win(ws["7d"], now)
+    f = win(ws.get("fable"), now)
+    if f:
+        u["scoped"] = [{"name": "Fable", **f}]
+    return u
+
+
+def label(a):
+    """Short account name: the share and limits are shown in the CodexBar panel itself."""
+    return a["short"]
+
+
+def listing():
+    now = int(time.time())
+    try:
+        st = json.load(open(STATE))
+    except Exception as e:
+        return {"schemaVersion": 1, "error": {"type": "StateUnavailable", "message": f"usage summary is not available: {e}"}}
+    accounts, active = [], None
+    for i, a in enumerate(st.get("accounts", []), 1):
+        ws = a.get("windows") or {}
+        measured = max([w.get("measuredAt") or 0 for k, w in ws.items() if w.get("source") == "poll"] or [0])
+        u = usage_of(a, now)
+        row = {
+            "number": i, "email": a["name"].split(" ")[0], "organizationUuid": a.get("org") or "",
+            "organizationName": "", "alias": label(a), "active": bool(a.get("active")),
+        }
+        status = (a.get("lastPoll") or {}).get("status")
+        if u and measured and now - measured <= STALE and status == "ok":
+            row.update({"usageStatus": "ok", "usage": u, "usageFetchedAt": iso(measured)})
+        else:
+            row["usageStatus"] = "relogin_required" if status == "auth_rejected" else "unavailable"
+            if u and measured:
+                row.update({"lastGoodUsage": u, "lastGoodFetchedAt": iso(measured)})
+        if row["active"]:
+            active = i
+        accounts.append(row)
+    return {"schemaVersion": 1, "activeAccountNumber": active, "supportsAccountSwitching": False, "accounts": accounts}
+
+
+def main():
+    args = sys.argv[1:]
+    if "--version" in args:
+        print(f"cswap {VERSION}")
+        return 0
+    if "--switch-to" in args:
+        print(json.dumps({"schemaVersion": 1, "error": {
+            "type": "SwitchDisabled",
+            "message": "Accounts are switched only from the Claude Switcher menu: switching restarts Claude."}}))
+        return 1
+    if "--list" in args:
+        out = listing()
+        print(json.dumps(out, ensure_ascii=False))
+        return 1 if "error" in out else 0
+    print("usage: cswap --list --json | --version | --switch-to N --json", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

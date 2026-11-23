@@ -1,0 +1,33 @@
+# The CodexBar checkout is published separately, as a fork of steipete/CodexBar.
+/CodexBar/
+/build/
+# Private notes and machine-specific files.
+/user-words/
+/private/
+/research/
+/happ-updater/
+/CLAUDE.md
+/.claude/
+codexbar-fork/signing.env
+# Never commit local settings, logs or databases, wherever they appear.
+*.env
+!*.env.example
+*.log
+*.db
+*.db-wal
+*.db-shm
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store
+# Generated from your own data / one-off import with account ids.
+usage/dashboard.html
+usage/history_import.py
+usage/build/
+docs/demo-state.json
+# Icon drafts and comparison pages stay local; only the chosen icon is published.
+/icons/*
+!/icons/AppIcon.svg
+!/icons/README.md
+# Screenshots and recordings made while working.
+/artifacts/

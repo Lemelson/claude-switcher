@@ -1,0 +1,16 @@
+Claude Switcher and the multi-account usage panel for CodexBar
+Copyright 2026 Lemelson
+https://github.com/Lemelson/claude-switcher
+
+This product includes software developed by Lemelson
+(https://github.com/Lemelson/claude-switcher).
+
+If you redistribute this work or anything built on it, in source or binary
+form, the Apache License 2.0 (section 4) requires you to keep this NOTICE
+file and to show its contents where third-party notices normally appear:
+in a NOTICE file shipped with your version, in its documentation, or in its
+About screen. Please keep the link to the original repository visible.
+
+The usage panel is built on CodexBar by Peter Steinberger
+(https://github.com/steipete/CodexBar), which is licensed under the MIT
+License. CodexBar's own code stays under its MIT License.
