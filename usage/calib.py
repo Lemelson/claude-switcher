@@ -521,6 +521,7 @@ def analyse(con, now=None):
              # what CodexBar runs to refresh limits when the menu opens
              "collector": {"python": sys.executable, "tick": os.path.join(here, "tick.py")},
              "vpnUp": vpn.get("up"),
+             "vpnState": vpn.get("state"),
              "accounts": []}
     bands = {}
     for kind in ("5h", "7d"):
@@ -548,8 +549,18 @@ def analyse(con, now=None):
             info = {"uuid": u, "name": a["name"], "short": a["short"], "active": a["active"],
                     "useHapp": a["useHapp"], "error": _error()}
         info["refresh"], info["refreshEverySec"] = poll.refresh_mode(a)
+        info["pausedByVpn"] = (info["refresh"] == "background" and vpn.get("state") == "on")
         info["cache"] = None if cache is None else {p: core.cache_view((cache.get(u) or {}).get(p)) for p in spans}
         state["accounts"].append(info)
+    # rolling 24 hours of every Claude Code call on this Mac, also calls no account was found for and accounts
+    # whose own figures failed this time (tick.py builds the top-level spend24h from it)
+    try:
+        h24 = con.execute("SELECT coalesce(sum(cost),0), coalesce(sum(inp+out+cw5+cw1h+cr),0), "
+                          "coalesce(sum(CASE WHEN acc IS NULL THEN cost END),0) FROM rows WHERE ts>=?",
+                          (now - 86400,)).fetchone()
+        state["claude24h"] = {"usd": round(h24[0], 2), "tokens": h24[1], "unattributedUsd": round(h24[2], 2)}
+    except Exception:
+        state["claude24h"] = {"error": _error()}
     # every Claude Code call on this Mac: the accounts above plus the few calls no account could be found for
     state["cache"] = None if cache is None else {
         p: core.cache_view(core.cache_merge(c.get(p) for c in cache.values())) for p in spans}
@@ -706,6 +717,10 @@ def account_state(con, a, sp, pairs, kx, bands, now, fam=core.family, drop=RESET
     td = con.execute("SELECT coalesce(sum(cost),0), coalesce(sum(inp+out+cw5+cw1h+cr),0) FROM rows WHERE acc=? AND ts>=?",
                      (u, today0)).fetchone()
     info["usdToday"], info["tokensToday"] = round(td[0], 2), td[1]
+    # rolling last 24 hours (not the calendar day): what the menu bar shows
+    h24 = con.execute("SELECT coalesce(sum(cost),0), coalesce(sum(inp+out+cw5+cw1h+cr),0) FROM rows WHERE acc=? AND ts>=?",
+                      (u, now - 86400)).fetchone()
+    info["usd24h"], info["tokens24h"] = round(h24[0], 2), h24[1]
     wk = con.execute("SELECT coalesce(sum(cost),0), coalesce(sum(inp+out+cw5+cw1h+cr),0) FROM rows WHERE acc=? AND ts>=?",
                      (u, now - 7 * 86400)).fetchone()
     info["usd7d"], info["tokens7d"] = round(wk[0], 2), wk[1]
@@ -787,6 +802,25 @@ def check():
     cur7 = {"pct": 2.0, "mine": 0.1, "outside": 1.9, "rolled": False, "resetsAt": E + W, "start": E}
     w0 = weekly_windows(con, Spend(con, "a"), "a", now, rate=0.3, k=1.0, cur7=cur7)[0]
     say(w0["minePct"] == 0.1 and w0["othersPct"] == 1.9, "current week: mine and others are windows.7d's")
+
+    # rolling 24 hours: 23 h ago counts, 25 h ago does not (even on the same calendar day); unattributed adds
+    con.execute("DELETE FROM rows")
+    for i, (ago, usd, acc) in enumerate(((23 * 3600, 2.0, "a"), (25 * 3600, 5.0, "a"), (3600, 0.25, None))):
+        con.execute("INSERT INTO rows(key,ts,model,inp,out,cw5,cw1h,cr,cost,acc) VALUES(?,?,?,10,100,0,0,5,?,?)",
+                    (f"h{i}", now - ago, "claude-opus-5-5", usd, acc))
+    saved_accounts = core.accounts
+    core.accounts = lambda: [{"uuid": "a", "name": "a", "short": "a", "id": "a", "useHapp": False, "active": True,
+                              "orgs": []}]
+    try:
+        st = analyse(con, now)
+    finally:
+        core.accounts = saved_accounts
+    info = st["accounts"][0]
+    say(info.get("usd24h") == 2.0 and info.get("tokens24h") == 115,
+        f"usd24h/tokens24h: 23 h ago counted, 25 h ago left out ({info.get('usd24h')}, {info.get('tokens24h')})")
+    say(st["claude24h"] == {"usd": 2.25, "tokens": 230, "unattributedUsd": 0.25},
+        f"claude24h: every call of the last 24 h, also unattributed ({st['claude24h']})")
+    con.execute("DELETE FROM rows")
 
     # one broken account or a broken cache step costs only itself (state.json is still written)
     mod = sys.modules[__name__]

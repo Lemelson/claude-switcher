@@ -126,6 +126,15 @@ Same shape in both, for `today` (since local midnight), `7d` and `30d`:
 - Live quota readings: the menu bar app appends each fresh reading to `antigravity-quota.jsonl` next to `state.json`. The collector imports new lines from a saved byte offset as source `live`. In any clock hour that has live readings, CodexBar's hourly sample is dropped, so a reading is never counted twice. Above 1 MB the file is compacted to its last 40 days (format and lock in `ANTIGRAVITY-STATE.md`).
 - Self-check: `python3 usage/antigravity.py --check`. Print the block: `python3 usage/antigravity.py`.
 
+## Codex block (25.11.2026, beta)
+
+- `state.json` has a top-level `codex` object shaped exactly like `antigravity`. The contract is in `CODEX-STATE.md`; a sample is in `codex-state-sample.json`.
+- `codex.py` builds it on every pass: spend from Codex's session logs (`~/.codex/sessions`, `~/.codex/archived_sessions`, plain and `.zst`) at OpenAI API list prices; quota from CodexBar's `history/codex.json` and the app's live readings file `codex-quota.jsonl` (account `codex` in `samples`). One quota for every Codex surface, so no mine/outside split.
+- The quota, rate, sessions and value code is shared with the Antigravity block in `quota_provider.py`; `antigravity.py` and `codex.py` only read their own logs and prices.
+- Scan cache: `codex-scan.db` next to `state.json`. A full read is about 18 GB of logs, about 60 s of reading, done at most 4 s per pass (`coverage.scanComplete`); a warm pass takes about 0.15 s (0.7 s in the scheduled tick). Copied calls of forked sessions, readings before the plan change and other accounts' readings are left out (`CODEX-STATE.md`).
+- A failure leaves `{"uuid", "name", "short", "beta", "error"}` in the block; the `codex` entry of `tick.log` starts with `error:`.
+- Self-check: `python3 usage/codex.py --check` (the checks live in `codex_check.py`, those of the shared code in `provider_check.py`). Print the block: `python3 usage/codex.py`.
+
 ## Self-checks
 
 All three run on made-up data in memory, never query a server and never write `state.json` (the Antigravity one also imports new quota readings into `usage.db`, as every pass does, and builds the block from the real data):
@@ -134,3 +143,4 @@ All three run on made-up data in memory, never query a server and never write `s
 - `python3 usage/poll.py --check`: who may be queried for every active account, VPN state and pass kind (scheduled, `--force`, `--refresh`), with the helper replaced by a stub; the daily compaction.
 - `python3 usage/calib.py --check`: weekly rows (no reading, final peak, mid-week reset after a hit, rounding of `minePctByModel`, the current week), and that one failing account or a failing cache step does not stop the summary.
 - `python3 usage/antigravity.py --check`: the Antigravity block (see above), including the rate rule against one odd stretch, readings that settle, and that a 1.6-point settling fall is not taken for a reset.
+- `python3 usage/codex.py --check`: the Codex log reader on made-up logs (repeated counters, a growing file read from its offset, Fast mode, long context, a compressed copy of the same session, prices), the shared code through the Codex provider, and the block built from the real data.

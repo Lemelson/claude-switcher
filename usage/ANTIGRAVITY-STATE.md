@@ -26,6 +26,21 @@ Written 23 November 2026 for the Antigravity (Gemini) page of the CodexBar panel
   - A fall counts as an unscheduled reset only above 4 points here (Claude accounts keep 1.5). With 1.5, a reading that settled 1.6 points in one step would have moved `windows.*.start` to that moment.
   - `weeks[]` rows carry `peakAt`, `peakFinal` and `resetAt` like Claude's (`README.md`, Weekly windows).
   - `quotaSource.weekly` describes the Gemini group's quota.
+- 2026-11-25, no change in the output: the quota, rate, sessions and value code moved to `usage/quota_provider.py`, shared with the Codex block (`CODEX-STATE.md`). The block built from the same data before and after is identical.
+- 2026-11-25, review fixes, additions only (no key renamed or removed):
+  - Live lines may carry `"account"` (section "Live readings file", "Account"). Only the current CodexBar account's readings are kept; `quotaSource.account` (new) names that account by a 12-character hash.
+  - `quotaSource.planSince` (new) is always `null` here: the cut by plan start is used by Codex only.
+  - A stretch never ends at a reading of 99.5 % or more (section Rate). On 25.11.2026 this changed no Antigravity number.
+- 2026-11-25, third review (shared code, both blocks). Keys added, none renamed or removed; values change:
+  - `windows.*.forecast` is built after the final rate, from `pct + sinceMeasure` (before: from calib's own rate, so `forecast.pct` could sit below the reading plus the spend after it). `forecast.pct` = `min(100, pct + sinceMeasure)`.
+  - `weeks[]` rows follow the weekly windows the readings show (grouped by reset time, 0 % readings left out), not steps of 7 days back from the latest reset. A window reset before its time ends where the next one began: `end` is that moment and new `scheduledEnd` the reset it was due at (else null). A whole week without readings but with spend is a row with new `approx: true` (boundaries guessed in 7-day steps; `peakPct` null). Every row has `approx` (false or true). On 25.11.2026 the Antigravity rows are 23.11–30.11 (current), 21.11–23.11 (ended early, peak 42.77 %), 14.11–21.11 (approx), then August.
+  - `drift[]` uses the rate's own estimator per weekly window (disjoint stretches, `rates`), not calib's envelope: `pairs` counts clean stretches (was overlapping pairs, 17 097). New `quotaUsdPer100`, `apiMix` (1 here) and `confident` (same rule as `value.confident`).
+  - Sessions per week: an interval ends at the last pair of readings before either window reads 99.5 % or more.
+  - `daily[]` covers whole calendar days: the first day is local midnight 179 days before today (180 days with today). New `daily[].unpriced` `{model: tokens}`, only on days with calls that have no price (their dollars are 0, not "below a cent").
+  - `cache.*.readPct` / `missPct` are computed from the integer token counts and rounded to 2 decimals (93.49, was 93.5).
+  - `error` is a fixed code `"antigravity-failed:<ExceptionType>"`, never the exception's text (which can hold a file path).
+  - `calibration.account` (new): `{filter, otherAccountCalls, unlabelledCalls, unlabelledUsed}`, which calls measured the rates. Here always `"all"` (Gemini's logs name no account).
+  - Plan name (`planName`) is kept per account like the readings: on an account change the old one's plan is parked and the new one's comes back (or none until the app sends it). While no CodexBar history names the account, live lines that name one are kept apart per account, and the account of the newest such line becomes the current one.
 
 ## Rules
 
@@ -55,12 +70,12 @@ Written 23 November 2026 for the Antigravity (Gemini) page of the CodexBar panel
 | `rates` | `{"5h": Rate, "7d": Rate}` | dollars at API prices per 1 % of the limit; a key is absent until that window has one clean stretch | estimate |
 | `drift` | `[DriftPoint]` | the 7d rate per past weekly window (≥ 150 pairs each), same as Claude | estimate |
 | `daily` | `[Day]` | 180 days, local dates | tokens exact, dollars estimate |
-| `usdToday`, `usd7d`, `usd30d` | number | API-price dollars since local midnight / last 7×24 h / last 30×24 h | estimate |
-| `tokensToday`, `tokens7d`, `tokens30d` | number | input + cached + cache write + output (thinking is inside output) | exact |
+| `usdToday`, `usd24h`, `usd7d`, `usd30d` | number | API-price dollars since local midnight / last rolling 24 h / last 7×24 h / last 30×24 h | estimate |
+| `tokensToday`, `tokens24h`, `tokens7d`, `tokens30d` | number | input + cached + cache write + output (thinking is inside output) | exact |
 | `weeks` | `[Week]` | spend per weekly quota window, boundaries from the 7d `resetsAt` | tokens exact, dollars estimate |
 | `value` | Value \| null | what 100 % of the weekly limit is worth at API prices | estimate |
 
-Omitted on purpose (no meaning for Antigravity): `orgs`, `org`, `plan`, `tier`, `fableShareOfWeek`, `kSource`, `kFrom`, `kPairs`, `kFit`, `kFable5h`, `kSource5h`, `kFrom5h`, `hits`, `windows.fable`, `windows.*.mine`, `windows.*.outside`, `windows.*.server`, `weeks[].minePct`, `weeks[].minePctByModel`, `weeks[].othersPct`. Everything in the quota counts as "mine": there is no split into "this Mac" and "elsewhere", so a view that shows `mine` / `outside` must show only `pct`.
+Claude-specific fields omitted for Antigravity include `windows.fable`, `windows.*.server` and `weeks[].minePctByModel`.
 
 ### Window (`windows["5h"]`, `windows["7d"]`)
 
@@ -74,11 +89,27 @@ Omitted on purpose (no meaning for Antigravity): `orgs`, `org`, `plan`, `tier`, 
 | `start` | window start = `resetsAt` − window length (or just after an unscheduled reset) | exact |
 | `usd` | `{"opus": 0, "fable": 0, "other": N}`: API-price dollars of Antigravity calls since `start`; all Gemini dollars go to `other` | estimate |
 | `sinceMeasure` | percent the calls after `measuredAt` would add, `rate × dollars`; present only when the window has a rate | estimate |
-| `series` | `[[time, pct, null], …]`: `[start, 0, null]` first (exact: the window starts with the first call), then the samples where the percentage changed, at most 96 in all. The third element is always `null` (no "mine" line) | exact points |
+| `split` | `{youPct, othersPct, unknownPct, method, preliminary, reason}` at `measuredAt`. The three parts add up to `pct` rounded to one decimal | attribution |
+| `mine`, `outside` | `split.youPct` and `split.othersPct` when `unknownPct` is zero, otherwise both null | attribution |
+| `series` | `[[ts, usedPct, mineOrNull, othersOrNull, unknownOrNull], …]`, at most 96 rows. When unrated with a positive unknown share, `mineOrNull` is null | readings and attribution |
 | `forecast` | same shape and method as Claude (`at`, `pct`, `ratePerHour`, `endPct`, `endLo`, `endHi`, `hitAt`, `hitEarly`, `hitLate`, `checks`, `bandSource`, `bandWindow`). `bandSource` is `"own"` when Antigravity has ≥ 30 checks on its own past windows, otherwise `"default"` (never pooled with Claude accounts) | estimate |
 | `sessions` | `windows["7d"]` only, always present there: `{"perWeek": 5.8, "pairs": 4}` or `null`. How many full 5-hour windows one weekly window holds, measured from the readings (below). The page turns it into "≈N full 5h sessions left · M fit before reset" | estimate |
 
 Present only when the window has not rolled: `series`, `forecast` (the forecast also needs a sample from the last 30 minutes).
+
+### You, Others and Unknown
+
+The split uses all merged readings before thinning. Within each continuous quota window, a reverse running minimum removes short-lived upward reading jitter from the increase calculation. The card displays the raw latest reading. A change in reset time of more than 300 seconds for `7d` or 120 seconds for `5h`, or a drop of more than four percentage points, starts a new segment. Reset times on zero-percent readings can move without starting a new segment.
+
+The method is `idle` when complete logs prove no calls since the window started, `calibrated` for a full split using a rate, `mixed` when a calibrated split leaves an unknown share, `floor` for a positive lower bound on Others without a rate, or `unknown`. A rate measured from one clean stretch sets `preliminary: true`. `reason` is null or a code such as `unpriced_calls` or `uncovered`.
+
+A subsequent idle interval without calibration assigns the increase minus two points to Others, floored at zero. A calibrated split uses local API-price spend once, in timestamp order, and permits a 600-second reporting lag. A recent encrypted conversation makes its overlapping interval uncovered. The check uses each `.pb` file's modification time from 600 seconds before the preceding reading through 60 seconds after the next reading.
+
+Observed `weeks[]` with a peak have `minePct`, `othersPct`, `unknownPct` and `splitMethod` from the peak after any mid-week reset. `minePct` is null when the rate is missing and some quota is unknown. Weekly `usd`, `tokens` and `m` remain totals for the full weekly row.
+
+### Overview timeline
+
+Schema 4 also publishes the top-level `overviewTimeline` with rolling `24h`, `72h` and `7d` ranges. The single Antigravity entry uses the key `antigravity:antigravity`. It contributes local API spend and measured weekly quota increases even before a rate is available. The collector stores its last eight days of inputs under `timeline_provider:antigravity` in `usage.db` for reuse during Codex account switches. [See the full overview timeline format](CODEX-STATE.md#overview-timeline).
 
 ### Sessions per week (`windows["7d"].sessions`)
 
@@ -106,7 +137,7 @@ Both percentages count the same use, wherever it happens (this Mac, the chat app
 
 How it is measured (`estimate()` in `antigravity.py`):
 
-1. **Stretches.** Walk the readings of each window, including the exact 0 % at its start, and close a stretch at the first reading with at least $60 (weekly) / $15 (5-hour) of this Mac's spend since the stretch began. Stretches don't overlap, so one stretch of use is counted once. (calib.py's pairs overlap: on 23.11 its "15 pairs" were one stretch counted 15 times.)
+1. **Stretches.** Walk the readings of each window, including the exact 0 % at its start, and close a stretch at the first reading with at least $60 (weekly) / $15 (5-hour) of this Mac's spend since the stretch began. Stretches don't overlap, so one stretch of use is counted once. (calib.py's pairs overlap: on 23.11 its "15 pairs" were one stretch counted 15 times.) A window's walk stops at its first reading of 99.5 % or more (added 2026-11-25): at the top the reading cannot move any more while the spend can, so a stretch ending there would show too few points per dollar.
 2. **Bound.** Use elsewhere only ever adds to how far the limit moved. So each stretch caps the true rate at `(moved + 2 points) / dollars`, and `(moved − 2) / dollars` is its floor; the 2 points allow for a reading that is off (it jumps, or it was taken during use and settles later: on 23.11 by 2.0 points on the 5-hour limit and 1.6 on the weekly one). Two stretches **agree** when their floor-to-cap ranges overlap. `upper` is the lowest cap that at least one other stretch agrees with (from 67 stretches on, 3 % of them, as in calib.py). With one stretch, or none agreeing, it is the lowest cap.
 3. **Clean, polluted or low.** A stretch is clean when its range holds `upper`: this Mac's spend explains it. A stretch whose floor is above `upper` moved the limit more than this Mac's spend explains, which means use in the chat app or on a phone: dropped, counted in `pairsDropped`. A stretch whose cap is below `upper` moved the limit much less than the others agree on (a reading off by more than the jitter, calls dated wrongly, spend the shown quota does not count): set aside, counted in `pairsLow`.
 4. **Rate.** The pooled rate of the clean stretches, `sum(moved) / sum(dollars)`, capped at `upper`.
@@ -286,6 +317,12 @@ CodexBar's own history keeps only the peak of each clock hour. So the menu bar a
 
 **The race this avoids:** a writer that appended between the collector's read and its rename would write into the old, already replaced file, and that line would be lost. The shared lock rules that out. A writer that ignores the lock or keeps the file open would lose at most the lines written during the few milliseconds of one compaction (once per ~6 weeks at 150 lines a day). That is harmless: readings come every ≤ 10 minutes and CodexBar's hourly history still covers that hour. A recreated or compacted file (new inode, or shorter than the saved offset) is read from the start again. Every sample is stored with `INSERT OR IGNORE`, so re-reading never duplicates anything.
 
+**Account (added 2026-11-25):** a line may carry `"account"`: the same string CodexBar writes as `preferredAccountKey` into its history file for this provider (`history/antigravity.json`, `history/codex.json`). It is a CodexBar key, never an e-mail address.
+- The current account is the history file's `preferredAccountKey` (or its only account). Only its readings are kept: a live line of another account is skipped, and the history import takes only that account's series.
+- A line without `"account"` (written before the key existed) belongs to the account that was current when the collector first saw the rule work (kept in `kv` as `<provider>_account_legacy`). After a switch to another account such lines are skipped.
+- When the preferred account changes, the stored samples of the old account are parked under `acc = "<provider>:<hash>"`, the new account's parked samples come back, its history is imported, and the live file is read again from its start with the new filter. Switching back restores the old account's readings.
+- The block names the account only as `quotaSource.account`: the first 12 hex digits of SHA-256 of the key. No key or e-mail enters `state.json`.
+
 **Merge with CodexBar's history:** both sources go into `samples` (`acc = 'antigravity'`, source `live` or `codexbar`). For windows, series, rates and forecasts, a `codexbar` sample is dropped whenever the same window has a `live` sample in the same clock hour. The hourly history entry is one of the readings the live file also holds, so keeping both would count that reading twice. Hours without live readings (the app was not running, or before the file existed) keep the CodexBar sample. Live samples are never dropped.
 
 ## Small example (shape only, numbers made up)
@@ -298,10 +335,18 @@ CodexBar's own history keeps only the peak of each clock hour. So the menu bar a
  "windows": {
   "5h": {"pct": 1.0, "measuredAt": 1795417747, "resetsAt": 1795439540, "source": "codexbar", "rolled": false,
          "start": 1795421540, "usd": {"opus": 0, "fable": 0, "other": 4.12},
-         "series": [[1795421520, 0.0, null], [1795424350, 0.33, null], [1795424947, 1.0, null]]},
+         "split": {"youPct": 0.0, "othersPct": 0.0, "unknownPct": 1.0, "method": "unknown",
+                   "preliminary": false, "reason": "possible_local_activity"},
+         "mine": null, "outside": null,
+         "series": [[1795421520, 0.0, 0.0, 0.0, 0.0], [1795424350, 0.33, null, 0.0, 0.3],
+                    [1795424947, 1.0, null, 0.0, 1.0]]},
   "7d": {"pct": 40.83, "measuredAt": 1795417747, "resetsAt": 1795873903, "source": "codexbar", "rolled": false,
          "start": 1795269103, "usd": {"opus": 0, "fable": 0, "other": 96.3}, "sinceMeasure": 0.4,
-         "series": [[1795269120, 0.0, null], [1795424350, 40.2, null], [1795424947, 40.83, null]],
+         "split": {"youPct": 20.0, "othersPct": 20.8, "unknownPct": 0.0, "method": "calibrated",
+                   "preliminary": false, "reason": null},
+         "mine": 20.0, "outside": 20.8,
+         "series": [[1795269120, 0.0, 0.0, 0.0, 0.0], [1795424350, 40.2, 19.8, 20.4, 0.0],
+                    [1795424947, 40.83, 20.0, 20.8, 0.0]],
          "sessions": {"perWeek": 5.8, "pairs": 4}}
  },
  "rates": {"7d": {"pct_per_usd": 0.41, "usd_per_100": 243.9, "pairs": 6, "source": "own", "method": "From stretches …",

@@ -277,6 +277,8 @@ def session_accounts():
 SW_RESTORE = ("restore готово", "restore done")
 SW_START = ("=== Claude Switcher запущен", "=== Claude Switcher started")
 SW_START_UUID = re.compile(r"(?:в Claude|in Claude now:)[^0-9a-f]*([0-9a-f]{8}-[0-9a-f-]{27})")
+SW_CLI_RESTORE = "cli restore done:"
+SW_CLI_UUID = re.compile(r"(?:cli restore done:.*uuid=|in CLI now:\s*)([0-9a-f]{8}-[0-9a-f-]{27})")
 
 
 def switch_line_uuid(msg):
@@ -287,6 +289,14 @@ def switch_line_uuid(msg):
     elif msg.startswith(SW_START):
         mm = SW_START_UUID.search(msg)
     return mm.group(1) if mm else None
+
+
+def cli_switch_line_uuid(msg):
+    """The account uuid that a switcher log message puts in Claude CLI / T3 Code, or None."""
+    if msg.startswith(SW_CLI_RESTORE) or msg.startswith(SW_START):
+        mm = SW_CLI_UUID.search(msg)
+        return mm.group(1) if mm else None
+    return None
 
 
 def switch_timeline():
@@ -304,6 +314,26 @@ def switch_timeline():
         u = switch_line_uuid(m.group(2))
         if u:
             ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")  # the switcher logs in system local time
+            tl.append((int(ts.timestamp()), u))
+    tl.sort()
+    return tl
+
+
+def cli_switch_timeline():
+    """[(epoch, uuid)]: which account was in Claude Code CLI / T3 Code, from the switcher log."""
+    tl = []
+    rx = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) (.*)$")
+    try:
+        fh = open(SWLOG, errors="replace")
+    except Exception:
+        return tl
+    for line in fh:
+        m = rx.match(line)
+        if not m:
+            continue
+        u = cli_switch_line_uuid(m.group(2))
+        if u:
+            ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
             tl.append((int(ts.timestamp()), u))
     tl.sort()
     return tl

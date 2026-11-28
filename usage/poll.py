@@ -55,15 +55,35 @@ def helper(*args, timeout=60):
 
 def vpn_state():
     """'on' (the expected VPN), 'off' (direct connection), 'foreign' (some other VPN) or 'unknown'.
-    Limits are queried only in the first two states, and only for the accounts that belong to that state."""
+    Limits are queried only in the first two states, and only for the accounts that belong to that state.
+    Any helper error/timeout returns 'unknown' (never 'off')."""
     r = helper("vpn")
-    return r.get("state") or ("on" if r.get("vpn") else "off")
+    if not r.get("ok"):
+        return "unknown"
+    state = r.get("state")
+    if state in ("on", "off", "foreign", "unknown"):
+        return state
+    if isinstance(r.get("vpn"), bool):
+        return "on" if r["vpn"] else "off"
+    return "unknown"
+
+
+def live_claude_uuid():
+    """The account UUID currently written in Claude Desktop's config.json, or None."""
+    try:
+        cfg = json.load(open(f"{core.CLAUDE_DIR}/config.json"))
+        v = cfg.get("lastKnownAccountUuid")
+        return v if isinstance(v, str) and v else None
+    except Exception:
+        return None
 
 
 def cookies_path(acc):
+    """Use live Claude/Cookies only when config.json confirms it currently belongs to `acc['uuid']`;
+    otherwise use the account's own saved profile copy."""
     live = f"{core.CLAUDE_DIR}/Cookies"
     saved = f"{core.SWITCHER_DIR}/profiles/{acc['id']}/Cookies"
-    if acc["active"] and os.path.exists(live):
+    if acc["active"] and os.path.exists(live) and live_claude_uuid() == acc["uuid"]:
         return live, "live"
     return saved, "profile"
 
@@ -170,12 +190,20 @@ def compact(con, now):
     return {"raw": raw, "thinned": thin}
 
 
-def poll(con, force=False, min_gap=0):
+def poll(con, force=False, min_gap=0, force_active=False, active_only=False, expected_active_uuid=None):
     """Polls the accounts. force: do not wait for the schedule; min_gap: but no more often than once per this many seconds
-    (refresh on opening the CodexBar menu: without it every menu opening would hit the server)."""
+    (refresh on opening the CodexBar menu: without it every menu opening would hit the server).
+    force_active: ignore min_gap for the currently active account (used right after an account switch so the newly
+    selected account always gets a fresh reading immediately, while still obeying the VPN rule and auth_rejected).
+    active_only: in --switch fast path, query only the active account immediately without waiting on background ones.
+    expected_active_uuid: abort cleanly as 'superseded' if the user already switched to another account."""
     now = int(time.time())
     if not os.path.exists(HELPER):
         return [{"acc": "-", "status": "no_helper"}]
+    accs = core.accounts()
+    active_now = next((a["uuid"] for a in accs if a["active"]), None)
+    if expected_active_uuid and active_now != expected_active_uuid:
+        return [{"acc": "-", "status": "superseded"}]
     state = vpn_state()
     up = state == "on"
     core.kv_set(con, "vpn_up", {"ts": now, "up": up, "state": state})
@@ -189,20 +217,13 @@ def poll(con, force=False, min_gap=0):
         # housekeeping must never stop the queries; it is tried again on the next pass
         con.rollback()
         res.append({"acc": "compact", "status": f"error {type(e).__name__}: {str(e)[:120]}"})
-    for acc in core.accounts():
+    for acc in accs:
         if refresh_mode(acc)[0] == "manual" and not acc["active"]:
             # the VPN-only account is never queried in the background: only while the owner works in it
             res.append({"acc": acc["short"], "status": "manual_idle"})
             continue
-        if force:
-            last = last_poll(con, acc)
-            if last and min_gap and last[1] == "ok" and now - last[0] < min_gap:
-                continue
-            # a rejected login is not queried even on demand: wait until the profile is re-saved
-            if last and min_gap and last[1] == "auth_rejected" and not due(con, acc, now):
-                continue
-        elif not due(con, acc, now):
-            continue
+        # Check VPN state BEFORE min_gap/due so a background account immediately transitions to vpn_mismatch
+        # when VPN turns on.
         if state != ("on" if acc["useHapp"] else "off"):
             # querying is not allowed: write a mark at most once per 15 minutes so the log does not bloat
             last = last_poll(con, acc)
@@ -210,6 +231,18 @@ def poll(con, force=False, min_gap=0):
                 con.execute("INSERT INTO polls(ts,acc,status,vpn,via) VALUES(?,?,?,?,?)",
                             (now, acc["uuid"], "vpn_mismatch", int(up), "-"))
             res.append({"acc": acc["short"], "status": "vpn_mismatch"})
+            continue
+        if active_only and not acc["active"]:
+            continue
+        if force:
+            last = last_poll(con, acc)
+            gap = 0 if (force_active and acc["active"]) else min_gap
+            if last and gap and last[1] == "ok" and now - last[0] < gap:
+                continue
+            # a rejected login is not queried even on demand: wait until the profile is re-saved
+            if last and min_gap and last[1] == "auth_rejected" and not due(con, acc, now):
+                continue
+        elif not due(con, acc, now):
             continue
         todo.append(acc)
 
@@ -232,6 +265,10 @@ def poll(con, force=False, min_gap=0):
     else:
         answers = [ask(acc) for acc in todo]
     for acc, via, r in answers:
+        # If Desktop switched accounts mid-request while using live Cookies, drop instead of misattributing.
+        if via == "live" and live_claude_uuid() != acc["uuid"]:
+            res.append({"acc": acc["short"], "status": "superseded"})
+            continue
         status = r.get("status", "helper_failed")
         raw = None
         if r.get("ok"):
@@ -274,7 +311,7 @@ def check():
 
     def stub(*args, timeout=60):
         if args[0] == "vpn":
-            return {"state": vpn[0]}
+            return {"ok": True, "state": vpn[0]}
         calls.append((args[args.index("--cookies") + 1], args[args.index("--vpn") + 1]))
         return {"ok": False, "status": "http_error"}
 
@@ -294,6 +331,51 @@ def check():
                     want = sorted((a["id"], "on" if a["useHapp"] else "off") for a in accs
                                   if state == ("on" if a["useHapp"] else "off") and (not a["useHapp"] or a["active"]))
                     say(asked == want, f"active {active}, VPN {state}, force {force}, gap {gap}: asked {asked}")
+        # --- force_active: skips min_gap for the active account, keeps min_gap for others and keeps auth_rejected blocked
+        for a in accs:
+            a["active"] = a["id"] == "b"
+        vpn[0] = "off"
+        now_t = int(time.time())
+        con = sqlite3.connect(":memory:")
+        con.executescript(core.SCHEMA)
+        con.executemany("INSERT INTO polls(ts,acc,status) VALUES(?,?,?)", [
+            (now_t - 10, "u-a", "ok"),
+            (now_t - 10, "u-b", "ok"),
+        ])
+        calls[:] = []
+        poll(con, force=True, min_gap=45, force_active=False)
+        say(calls == [], f"refresh within min_gap skips both ok accounts: {calls}")
+        calls[:] = []
+        poll(con, force=True, min_gap=45, force_active=True)
+        say(calls == [("b", "off")], f"force_active polls active account within min_gap, skips other: {calls}")
+        # auth_rejected stays blocked even with force_active
+        con = sqlite3.connect(":memory:")
+        con.executescript(core.SCHEMA)
+        con.executemany("INSERT INTO polls(ts,acc,status) VALUES(?,?,?)", [
+            (now_t - 10, "u-a", "ok"),
+            (now_t - 10, "u-b", "auth_rejected"),
+        ])
+        calls[:] = []
+        poll(con, force=True, min_gap=45, force_active=True)
+        say(calls == [], f"force_active still respects auth_rejected: {calls}")
+        # VPN rule still holds with force_active
+        vpn[0] = "on"
+        con = sqlite3.connect(":memory:")
+        con.executescript(core.SCHEMA)
+        con.execute("INSERT INTO polls(ts,acc,status) VALUES(?,?,?)", (now_t - 10, "u-b", "ok"))
+        calls[:] = []
+        poll(con, force=True, min_gap=45, force_active=True)
+        say(calls == [], f"force_active still enforces VPN rule: {calls}")
+        # expected_active_uuid mismatch aborts cleanly as superseded
+        vpn[0] = "off"
+        calls[:] = []
+        sup = poll(con, force=True, min_gap=45, force_active=True, active_only=True, expected_active_uuid="u-v")
+        say(calls == [] and sup == [{"acc": "-", "status": "superseded"}],
+            f"expected_active_uuid mismatch returns superseded: {sup}")
+        # helper timeout/error returns 'unknown' (never 'off')
+        mod.helper = lambda *a, timeout=60: {"ok": False, "status": "timeout"}
+        say(vpn_state() == "unknown", "vpn_state returns 'unknown' on helper timeout")
+        mod.helper = stub
     finally:
         mod.helper, mod.cookies_path, mod.HELPER, core.accounts = saved
 

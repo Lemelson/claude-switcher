@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 APP="build/Claude Switcher.app"
 rm -rf build && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-swiftc -O -swift-version 5 -target arm64-apple-macos14.0 \
+swiftc -O -swift-version 5 -target arm64-apple-macos14.0 -lsqlite3 \
   -o "$APP/Contents/MacOS/ClaudeSwitcher" Sources/main.swift
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -48,6 +48,7 @@ if [[ "${1:-}" == "--install" ]]; then
   cp -R "$APP" ~/Applications/
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f ~/Applications/"Claude Switcher.app" || true
   mdimport ~/Applications/"Claude Switcher.app" 2>/dev/null || true
-  open ~/Applications/"Claude Switcher.app"
+  env -i HOME="$HOME" USER="$USER" LOGNAME="$LOGNAME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    /usr/bin/open ~/Applications/"Claude Switcher.app"
   echo "Installed: ~/Applications/Claude Switcher.app"
 fi

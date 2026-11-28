@@ -1,0 +1,604 @@
+{
+ "uuid": "codex",
+ "name": "Codex",
+ "short": "Codex",
+ "active": false,
+ "useHapp": false,
+ "windows": {
+  "5h": {
+   "pct": 20.0,
+   "measuredAt": 1795630317,
+   "resetsAt": 1795646760,
+   "source": "live",
+   "rolled": false,
+   "start": 1795628760,
+   "usd": {
+    "opus": 0.0,
+    "fable": 0.0,
+    "other": 1.74
+   },
+   "series": [
+    [
+     1795628760,
+     0.0,
+     null
+    ],
+    [
+     1795629392,
+     18.0,
+     null
+    ],
+    [
+     1795629698,
+     20.0,
+     null
+    ],
+    [
+     1795630317,
+     20.0,
+     null
+    ]
+   ],
+   "forecast": {
+    "at": 1795630642,
+    "pct": 20.0,
+    "ratePerHour": 11.181,
+    "endPct": 70.1,
+    "endLo": 20.0,
+    "endHi": 100.0,
+    "hitAt": null,
+    "hitEarly": 1795638397,
+    "hitLate": null,
+    "checks": 155,
+    "bandSource": "own",
+    "bandWindow": "5h"
+   },
+   "sinceMeasure": 0.0
+  },
+  "7d": {
+   "pct": 30.0,
+   "measuredAt": 1795630317,
+   "resetsAt": 1795822860,
+   "source": "live",
+   "rolled": false,
+   "start": 1795218060,
+   "usd": {
+    "opus": 0.0,
+    "fable": 0.0,
+    "other": 19.9
+   },
+   "series": [
+    [
+     1795218060,
+     0.0,
+     null
+    ],
+    [
+     1795629084,
+     28.0,
+     null
+    ],
+    [
+     1795629392,
+     30.0,
+     null
+    ],
+    [
+     1795630317,
+     30.0,
+     null
+    ]
+   ],
+   "forecast": {
+    "at": 1795630642,
+    "pct": 30.0,
+    "ratePerHour": 0.423,
+    "endPct": 52.6,
+    "endLo": 41.3,
+    "endHi": 66.1,
+    "hitAt": null,
+    "hitEarly": null,
+    "hitLate": null,
+    "checks": 0,
+    "bandSource": "default",
+    "bandWindow": "7d"
+   },
+   "sinceMeasure": 0.0,
+   "sessions": {
+    "perWeek": 6.4,
+    "pairs": 14
+   }
+  }
+ },
+ "rates": {
+  "7d": {
+   "pct_per_usd": 1.542013978445718,
+   "usd_per_100": 64.85025518432433,
+   "pairs": 1,
+   "source": "own",
+   "method": "From stretches with $10+ of this Mac's Codex spend between two readings; a stretch that moved the limit more than that spend explains (Codex cloud, code review, another computer), or much less than the others agree on, is left out.",
+   "pairsUsed": 1,
+   "pairsDropped": 0,
+   "pairsLow": 0,
+   "range": [
+    65,
+    65
+   ],
+   "usd": 14.18,
+   "quotaUsdPer100": 52.51,
+   "apiMix": 1.235
+  },
+  "5h": {
+   "pct_per_usd": 10.387268616344636,
+   "usd_per_100": 9.627169922480624,
+   "pairs": 3,
+   "source": "own",
+   "method": "From stretches with $3+ of this Mac's Codex spend between two readings; a stretch that moved the limit more than that spend explains (Codex cloud, code review, another computer), or much less than the others agree on, is left out.",
+   "pairsUsed": 3,
+   "pairsDropped": 2,
+   "pairsLow": 0,
+   "range": [
+    9,
+    10
+   ],
+   "usd": 12.42,
+   "quotaUsdPer100": 9.63,
+   "apiMix": 1.0
+  }
+ },
+ "drift": [
+  {
+   "weekEnd": 1795822860,
+   "usd_per_100": 64.9,
+   "pairs": 1,
+   "spend": {
+    "opus": 0.0,
+    "fable": 0.0,
+    "other": 19.9
+   },
+   "quotaUsdPer100": 52.51,
+   "apiMix": 1.235,
+   "confident": false
+  }
+ ],
+ "kFable": 1.0,
+ "planName": "Plus",
+ "planPriceUsd": 20.0,
+ "has5h": true,
+ "lastMeasuredAt": 1795630628,
+ "lastPoll": null,
+ "daily": [
+  {
+   "day": "2026-11-18",
+   "opus": 0,
+   "fable": 0,
+   "other": 0.03,
+   "tokens": 31504,
+   "m": {
+    "gpt-6.2-sol": [
+     0.03,
+     31504
+    ]
+   }
+  },
+  {
+   "day": "2026-11-19",
+   "opus": 0,
+   "fable": 0,
+   "other": 5.89,
+   "tokens": 25638939,
+   "m": {
+    "gpt-6.2-sol": [
+     5.89,
+     25638939
+    ]
+   }
+  },
+  {
+   "day": "2026-11-25",
+   "opus": 0,
+   "fable": 0,
+   "other": 19.9,
+   "tokens": 115943741,
+   "m": {
+    "codex-auto-review": [
+     0.0,
+     16157534
+    ],
+    "gpt-6-luna": [
+     0.0,
+     29352
+    ],
+    "gpt-6.2-sol": [
+     19.9,
+     99756855
+    ]
+   },
+   "unpriced": {
+    "codex-auto-review": 16157534
+   }
+  }
+ ],
+ "trackedSince": 1758520131,
+ "usd30d": 44.41,
+ "tokens30d": 308277968,
+ "usdToday": 19.9,
+ "tokensToday": 115943741,
+ "usd24h": 19.9,
+ "tokens24h": 115943741,
+ "usd7d": 25.79,
+ "tokens7d": 141582680,
+ "weeks": [
+  {
+   "start": 1795218060,
+   "end": 1795822860,
+   "current": true,
+   "usd": {
+    "opus": 0.0,
+    "fable": 0.0,
+    "other": 19.9
+   },
+   "tokens": 115943741,
+   "peakPct": 30.0,
+   "peakAt": 1795630317,
+   "peakFinal": false,
+   "resetAt": null,
+   "m": {
+    "codex-auto-review": [
+     0.0,
+     16157534
+    ],
+    "gpt-6-luna": [
+     0.0,
+     29352
+    ],
+    "gpt-6.2-sol": [
+     19.9,
+     99756855
+    ]
+   },
+   "approx": false,
+   "scheduledEnd": null
+  },
+  {
+   "start": 1794605640,
+   "end": 1795210440,
+   "current": false,
+   "usd": {
+    "opus": 0.0,
+    "fable": 0.0,
+    "other": 8.58
+   },
+   "tokens": 36783192,
+   "peakPct": 49.0,
+   "peakAt": 1795210178,
+   "peakFinal": true,
+   "resetAt": null,
+   "m": {
+    "codex-auto-review": [
+     0.0,
+     709301
+    ],
+    "gpt-6.1-sol": [
+     2.1,
+     6031323
+    ],
+    "gpt-6.1-terra": [
+     0.55,
+     4372125
+    ],
+    "gpt-6.2-sol": [
+     5.93,
+     25670443
+    ]
+   },
+   "approx": false,
+   "scheduledEnd": null
+  }
+ ],
+ "sessionPctOfWeek": 15.62,
+ "beta": true,
+ "models": {
+  "gpt-6.2-sol": {
+   "calls": 789,
+   "input": 3147633,
+   "cached": 121924864,
+   "cacheWrite": 0,
+   "output": 354801,
+   "thinking": 58517,
+   "usd": 25.82,
+   "missPct": 2.5,
+   "efforts": {
+    "Low": 1,
+    "High": 237,
+    "Medium": 551
+   },
+   "priced": true,
+   "priceConfirmed": true,
+   "unpricedCalls": 0,
+   "estimatedPriceCalls": 0
+  },
+  "gpt-6.1-terra": {
+   "calls": 809,
+   "input": 1801037,
+   "cached": 131526784,
+   "cacheWrite": 0,
+   "output": 239489,
+   "thinking": 75861,
+   "usd": 12.62,
+   "missPct": 1.4,
+   "efforts": {
+    "Medium": 177,
+    "High": 622,
+    "Low": 10
+   },
+   "priced": true,
+   "priceConfirmed": true,
+   "unpricedCalls": 0,
+   "estimatedPriceCalls": 0
+  },
+  "gpt-6.1-sol": {
+   "calls": 156,
+   "input": 1748357,
+   "cached": 20073216,
+   "cacheWrite": 0,
+   "output": 45975,
+   "thinking": 5281,
+   "usd": 5.96,
+   "missPct": 8.0,
+   "efforts": {
+    "Medium": 125,
+    "High": 31
+   },
+   "priced": true,
+   "priceConfirmed": true,
+   "unpricedCalls": 0,
+   "estimatedPriceCalls": 0
+  },
+  "gpt-6-luna": {
+   "calls": 1,
+   "input": 29279,
+   "cached": 0,
+   "cacheWrite": 0,
+   "output": 73,
+   "thinking": 0,
+   "usd": 0.0,
+   "missPct": 100.0,
+   "efforts": {
+    "Low": 1
+   },
+   "priced": true,
+   "priceConfirmed": true,
+   "unpricedCalls": 0,
+   "estimatedPriceCalls": 0
+  },
+  "codex-auto-review": {
+   "calls": 389,
+   "input": 1912818,
+   "cached": 25441664,
+   "cacheWrite": 0,
+   "output": 31978,
+   "thinking": 13075,
+   "usd": 0.0,
+   "missPct": 7.0,
+   "efforts": {
+    "Low": 389
+   },
+   "priced": false,
+   "priceConfirmed": false,
+   "unpricedCalls": 389,
+   "estimatedPriceCalls": 0
+  }
+ },
+ "value": {
+  "planName": "Plus",
+  "planPriceUsd": 20.0,
+  "weekUsd": 65,
+  "monthUsd": 282,
+  "timesPrice": 14.1,
+  "pairs": 1,
+  "confident": false,
+  "reason": "Measured 1 of 4 times so far. Each measurement takes about $10 of use on this Mac.",
+  "byModel": [
+   {
+    "model": "gpt-6.2-sol",
+    "label": "Sol 6.2",
+    "monthUsd": 268,
+    "timesPrice": 13.4,
+    "pairs": 1
+   },
+   {
+    "model": "gpt-6.1-terra",
+    "label": "Terra 6.1",
+    "monthUsd": null,
+    "timesPrice": null,
+    "pairs": 0
+   },
+   {
+    "model": "gpt-6.1-sol",
+    "label": "Sol 6.1",
+    "monthUsd": null,
+    "timesPrice": null,
+    "pairs": 0
+   },
+   {
+    "model": "gpt-6-luna",
+    "label": "Luna 6",
+    "monthUsd": null,
+    "timesPrice": null,
+    "pairs": 0
+   },
+   {
+    "model": "codex-auto-review",
+    "label": "codex-auto-review",
+    "monthUsd": null,
+    "timesPrice": null,
+    "pairs": 0
+   }
+  ],
+  "weekOpusUsd": 65,
+  "monthOpusUsd": 282
+ },
+ "valueReason": null,
+ "calibration": {
+  "stretches": {
+   "7d": 1,
+   "5h": 5
+  },
+  "sessionIntervals": 14,
+  "sessionPerWeekSoFar": 6.4,
+  "thresholds": {
+   "jitterPts": 2.0,
+   "stretchUsd": {
+    "5h": 3.0,
+    "7d": 10.0
+   },
+   "confidentStretches": 4,
+   "confidentUsd": 40.0,
+   "sessionMinPts": {
+    "5h": 5.0,
+    "7d": 3.0
+   },
+   "sessionPairs": 3,
+   "sessionSum7dPts": 12.0
+  },
+  "planFile": "~/Library/Application Support/ClaudeSwitcher/usage/codex-plan.json",
+  "planFileExists": false,
+  "account": {
+   "filter": "account",
+   "otherAccountCalls": 0,
+   "unlabelledCalls": 0,
+   "unlabelledUsed": true
+  }
+ },
+ "quotaSource": {
+  "app": "CodexBar",
+  "file": "~/Library/Application Support/com.steipete.codexbar/history/codex.json",
+  "fileModifiedAt": 1795630628,
+  "lastSampleAt": 1795630628,
+  "ageSec": 14,
+  "cadence": "CodexBar keeps at most the peak sample of each clock hour",
+  "weekly": "the weekly limit of the ChatGPT account's Codex quota (one quota for every Codex surface)",
+  "accountsInFile": 1,
+  "samples": {
+   "5h": {
+    "count": 1614,
+    "first": 1779101782,
+    "last": 1795630628,
+    "today": 117
+   },
+   "7d": {
+    "count": 3167,
+    "first": 1779101782,
+    "last": 1795630628,
+    "today": 113
+   }
+  },
+  "bySource": {
+   "codexbar": {
+    "5h": {
+     "count": 1578,
+     "first": 1779101782,
+     "last": 1795630628
+    },
+    "7d": {
+     "count": 3131,
+     "first": 1779101782,
+     "last": 1795630628
+    }
+   },
+   "live": {
+    "5h": {
+     "count": 36,
+     "first": 1795603711,
+     "last": 1795630317
+    },
+    "7d": {
+     "count": 36,
+     "first": 1795603711,
+     "last": 1795630317
+    }
+   }
+  },
+  "lastSource": "codexbar",
+  "account": "b77c53f4e468",
+  "liveFile": "~/Library/Application Support/ClaudeSwitcher/usage/codex-quota.jsonl",
+  "liveFileExists": true,
+  "liveBadLines": 0,
+  "liveCompactedAt": null,
+  "planSince": 1793375297
+ },
+ "cache": {
+  "today": {
+   "missPct": 2.67,
+   "coldCallsPct": 0.6,
+   "calls": 773,
+   "readPct": 97.33,
+   "readTokens": 112610048,
+   "missTokens": 3085266,
+   "writeTokens": 0,
+   "savedUsd": 247.23,
+   "missUsd": 4.12
+  },
+  "7d": {
+   "missPct": 2.99,
+   "coldCallsPct": 0.5,
+   "calls": 985,
+   "readPct": 97.01,
+   "readTokens": 136990208,
+   "missTokens": 4226878,
+   "writeTokens": 0,
+   "savedUsd": 293.55,
+   "missUsd": 6.29
+  },
+  "30d": {
+   "missPct": 2.81,
+   "coldCallsPct": 0.4,
+   "calls": 2144,
+   "readPct": 97.19,
+   "readTokens": 298966528,
+   "missTokens": 8639124,
+   "writeTokens": 0,
+   "savedUsd": 509.06,
+   "missUsd": 11.48
+  }
+ },
+ "coverage": {
+  "tokens": "exact",
+  "usd": "estimate",
+  "historySince": "2026-05-30",
+  "sessionFiles": 4521,
+  "compressedFiles": 4488,
+  "archivedFiles": 276,
+  "duplicateFilesDropped": 0,
+  "calls": 218758,
+  "repeatsDropped": 8537,
+  "unreadableFiles": 0,
+  "malformedLines": 0,
+  "unpricedCalls30d": 389,
+  "unconfirmedPrices": [],
+  "fastCalls30d": 0,
+  "longContextCalls30d": 249,
+  "sessionsByClient30d": {
+   "Codex Desktop": 52,
+   "T3 Code": 16,
+   "codex_exec": 2
+  },
+  "accounts30d": 1,
+  "planSeen": "plus",
+  "planSeenAt": 1795629468,
+  "pricesChecked": "2026-11-25",
+  "priceSource": "https://developers.openai.com/api/docs/pricing",
+  "priceTier": "Standard; Fast-mode calls at Fast prices; prompts above 272K tokens at long-context prices",
+  "notCounted": "Codex cloud tasks, code review on GitHub, ChatGPT chat, other computers, calls older than 180 days",
+  "copiesDropped": 19901,
+  "copyTokensDropped": 2499454902,
+  "planSince": 1793375297,
+  "scanCached": true,
+  "scanRescannedFiles": 0,
+  "scanMs": 96,
+  "scanComplete": true,
+  "scanPendingFiles": 0,
+  "scanErrorFiles": 0
+ }
+}
